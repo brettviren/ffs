@@ -1,0 +1,125 @@
+#+title: FFS - Fast Fourier Spin
+#+subtitle: A simple GPU stressor
+#+EXPORT_FILE_NAME: index.html
+
+* Installation
+
+#+begin_example
+  $ python -m venv venv
+  $ source venv/bin/activate
+  $ pip install -e .
+#+end_example
+
+By default, only support for Numpy (CPU) operations are included.  GPU
+support comes in cupy flavor (PyTorch TBD).  A GPU interface can be
+given as a package "extra".
+
+#+begin_example
+  $ pip install -e .[cupy]
+#+end_example
+
+* Using
+
+** Commands
+
+This section describes ways to run ~ffs~.  Note, command lines assume
+~fish~ shell.  Adjust to ~bash~, etc, accordingly.
+
+The ~ffs~ program provides a number of sub commands:
+
+#+begin_src shell :exports both :results output code :wrap example
+ffs
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Usage: ffs [OPTIONS] COMMAND [ARGS]...
+
+Options:
+  -m, --module [cupy|numpy]  Set GPU interface module
+  --help                     Show this message and exit.
+
+Commands:
+  copy     Transfering array back/forth from CPU/GPU RAM.
+  fft      Run FFTs on GPU, transfering back/forth
+  proflog  Dump a Python profile binary log.
+  rand     Generate random numbers on GPU.
+#+end_example
+
+#+begin_src shell :exports both :results output code :wrap example
+ffs fft --help
+#+end_src
+
+Note the use of ~ffs -m <module>~ sets which backend implementation.
+The ~numpy~ backend will perform all operations on CPU.
+
+#+RESULTS:
+#+begin_example
+Usage: ffs fft [OPTIONS]
+
+  Run FFTs on GPU, transfering back/forth
+
+Options:
+  -s, --shape TEXT     Array shape
+  -c, --count INTEGER  Number of cycles
+  -d, --dtype TEXT     The array dtype
+  --help               Show this message and exit.
+#+end_example
+
+** Example
+
+Here we run 1000 cycles of 2D FFT/invFFT on numpy and cupy and a third
+run with cupy were we skip the CPU<-->GPU copies inside the loop.
+
+#+begin_src shell :exports both :results output code :wrap example
+ffs -m numpy fft -s 1000,1000 -c 1000
+ffs -m cupy  fft -s 1000,1000 -c 1000
+ffs -m cupy  fft -s 1000,1000 -c 1000 --no-copy
+#+end_src
+
+#+RESULTS:
+#+begin_example
+3.529 s, 28.0 Hz, 112.2 MByte/sec copy:True
+0.477 s, 207.5 Hz, 829.9 MByte/sec copy:True
+0.136 s, 728.6 Hz, 2914.3 MByte/sec copy:False
+#+end_example
+
+** Profiling
+
+#+begin_src shell :exports both :results output code :wrap example
+python -m cProfile -o fft-cupy.bin (which ffs) -m cupy fft -s 1000,1000
+ffs proflog fft-cupy.bin | head -3
+#+end_src
+
+#+RESULTS:
+#+begin_example
+0.486 s, 203.8 Hz, 815.2 MByte/sec
+Wed May 19 17:00:49 2021    fft-cupy.bin
+
+         312193 function calls (303081 primitive calls) in 0.975 seconds
+#+end_example
+
+Of course, explore the full output
+
+** Multiple processes
+
+To test how well the GPU shares, simply run multiple instances of an
+~ffs~ test.
+
+
+#+begin_src shell :exports both :results output code :wrap example
+for n in (seq 1 4); ffs -m cupy  fft -s 1000,1000 -c 1000 > $n.log &; end
+wait
+cat (seq 1 4).log
+#+end_src
+
+#+RESULTS:
+#+begin_example
+10.788 s, 92.6 Hz, 370.4 MByte/sec copy:True
+10.997 s, 90.8 Hz, 363.4 MByte/sec copy:True
+10.908 s, 91.6 Hz, 366.3 MByte/sec copy:True
+10.784 s, 92.6 Hz, 370.6 MByte/sec copy:True
+#+end_example
+
+
+

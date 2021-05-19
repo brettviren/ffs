@@ -1,0 +1,8 @@
+*~
+*.egg
+*.bin
+.direnv
+.envrc
+*.egg-info
+__pycache__
+*.log
