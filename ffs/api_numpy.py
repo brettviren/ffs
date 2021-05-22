@@ -5,6 +5,8 @@ Thin wrapper around numpy
 
 import numpy
 
+name = "numpy"
+
 def random(shape, dtype="float32"):
     '''
     Return a random array

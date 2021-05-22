@@ -121,5 +121,71 @@ cat (seq 1 4).log
 10.784 s, 92.6 Hz, 370.6 MByte/sec copy:True
 #+end_example
 
+** Campaigns 
+
+By itself ~ffs~ provides a micro benchmark primitive.  A number of ~ffs~
+jobs can be run at the same time to simulate some larger set of jobs.
+FFS provides support for or orchestrating such campaigns
+with the help of [[https://github.com/brettviren/shoreman][my hacked version of shoreman]] Procfile runner.
+
+** Generating a campaign
+
+A campaign consists of a aset of Procfiles and a main driver script.
+These can be generated for a particular ~ffs~ hardware "module" like:
+
+#+begin_example
+ffs -m cupy campaign outdir
+ffs -m numpy campaign outdir
+#+end_example
+
+The ~outdir/~ will be created and populated with foreman Procfiles and a
+main shell script.  The Procfiles are generated to hold vectors formed
+from the outer product of select ~ffs~ parameter values.
+
+** Running a campaign
+
+Following the guidance printed by the command:
+
+#+begin_example
+cd outdir
+./cupy-campaign.sh &
+tail -f cupy-campaign.log
+#+end_example
+
+This will run ~shoreman.sh~ on each ~*.procfile~ serially, and for each
+~shoreman.sh~ will run a number of ~ffs~ instances in parallel.  For each
+~*.procfile~ a ~*-gpu.log~ and ~*-cpu.log~ file will be produced.  These
+files hold samples taken by my version of ~shoreman.sh~ from Linux's
+~/proc/PID/task/*/stat~ and from ~nvidia-smi~.  The ~ffs~ program provides
+commands to assist in their analysis.
+
+** Interpreting possible errors
+
+During the running you may see lines like:
+
+#+begin_example
+cat: /proc/3778373/task/3778506/stat: No such file or directory
+#+end_example
+
+These can be ignored and are due to an innocuous race condition in the
+~shoreman.sh~ monitoring loop.
+
+You may also see ~ffs~ crash due to out of memory errors like
+
+#+begin_example
+10:13:04 cupy-fft-10000x1000-float64-3	| cupy.cuda.memory.OutOfMemoryError: Out of memory allocating 160,000,000 bytes (allocated so far: 240,000,000 bytes).
+#+end_example
+
+These are natural consequences of the ~shape~ and ~dtype~ parameters and
+the ~ffs~ job multiplicity resulting in arrays large enough to exhaust
+your GPU RAM.
+
+** Processing results
+
+The ~*-{cpu,gpu}.log~ text files hold data sampled at approximately 1
+second intervals during each job.  The ~*-cpu.log~ file holds Linux ~stat~
+info for all processes and their threads and the ~*-gpu.log~ file holds
+info from ~nvidia-smi~.
+
 
 

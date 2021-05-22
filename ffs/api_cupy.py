@@ -5,6 +5,8 @@ Thin wrapper around cupy
 
 import cupy
 
+name = "cupy"
+
 def random(shape, dtype='float32'):
     '''
     Return a random array
